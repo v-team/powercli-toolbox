@@ -8,7 +8,7 @@ function Get-Load {
   Author:  www.vmdude.fr
 .PARAMETER LoadType
   Specify wich load to display when cmdlet run on standalone
-  Valid LoadType are 'VirtualMachine', 'HostSystem', 'ClustercomputeResource'
+  Valid LoadType are 'VirtualMachine', 'HostSystem', 'ClustercomputeResource', 'Datastore'
 .PARAMETER Quickstat
   Switch, when true the method to get stats is based
   on quickstats through summary child properties.
@@ -25,6 +25,9 @@ function Get-Load {
 .EXAMPLE
   PS> Get-VM "vmtest*" | Get-Load
   Get a graphical load list for all VM with name started with vmtest
+.EXAMPLE
+  PS> Get-Datastore -Location STORAGEPOD01 | Get-Load
+  Get a graphical space usage for all datastores in storage pod STORAGEPOD01 
 #>
 
 	[CmdletBinding(DefaultParameterSetName='GetViewByVIObject')]
@@ -63,6 +66,7 @@ function Get-Load {
 			Write-Host -Foreground Yellow "'VirtualMachine' for virtual machine"
 			Write-Host -Foreground Yellow "'HostSystem' for ESXi hosts"
 			Write-Host -Foreground Yellow "'ClustercomputeResource' for vSphere cluster"
+			Write-Host -Foreground Yellow "'Datastore' for VMFS/NFS datastore"
 		}
 		
 		function VM-Load([VMware.VimAutomation.Sdk.Types.V1.VIObject]$VMName) {
@@ -120,7 +124,7 @@ function Get-Load {
 		function Cluster-Load([VMware.VimAutomation.Sdk.Types.V1.VIObject]$ClusterName) {
 			$cluster = Get-View $ClusterName -Property resourcePool,name
 			if ($Quickstat) {
-				if ($cluster.name.length -gt 20) { write-host -nonewline $cluster.name.substring(0, 2 -5) "... CPU:" } else { write-host -nonewline $cluster.name (" "*(20-$cluster.name.length)) "CPU:"	}
+				if ($cluster.name.length -gt 20) { write-host -nonewline $cluster.name.substring(0, 22 -5) "... CPU:" } else { write-host -nonewline $cluster.name (" "*(20-$cluster.name.length)) "CPU:"	}
 				# using QuickStat for getting "realtime"-ish stats
 				$rootResourcePool = get-view $cluster.resourcePool -Property summary
 				if ($rootResourcePool.summary.runtime.cpu.maxUsage -ne 0 -And $rootResourcePool.summary.runtime.memory.maxUsage -ne 0) {
@@ -143,6 +147,17 @@ function Get-Load {
 				write-host ""
 			}
 		}
+
+		function Datastore-Load([VMware.VimAutomation.Sdk.Types.V1.VIObject]$DatastoreName) {
+			$Datastore = Get-View $DatastoreName -Property summary,name
+			if ($Datastore.name.length -gt 30) { write-host -nonewline $Datastore.name.substring(0, 22 -5) "... USED:" } else { write-host -nonewline $Datastore.name (" "*(30-$Datastore.name.length)) "USED:"	}
+			if ($Datastore.summary.Capacity -ne 0 -And $Datastore.summary.FreeSpace -ne 0) {
+				Show-PercentageGraph([math]::floor((($Datastore.summary.Capacity-$Datastore.summary.FreeSpace)*100)/($Datastore.summary.Capacity)))
+			} else {
+				Show-PercentageGraph(0)
+			}
+			write-host ""
+		}
 		
 		$objPerfManager = Get-View (Get-View ServiceInstance -Property content).content.PerfManager
 		$avgConsumedMemCounter = ($objPerfManager.PerfCounter | ?{ $_.groupinfo.key -match "mem" } | ?{ $_.nameinfo.key -match "usage$" } | ?{ $_.RollupType -match "average" -And $_.Level -eq 1}).key
@@ -159,6 +174,7 @@ function Get-Load {
 					"VMware.VimAutomation.ViCore.Impl.V1.Inventory.VirtualMachineImpl" { VM-Load($objVI) }
 					"VMware.VimAutomation.ViCore.Impl.V1.Inventory.VMHostImpl" { VMHost-Load($objVI) }
 					"VMware.VimAutomation.ViCore.Impl.V1.Inventory.ClusterImpl" { Cluster-Load($objVI) }
+					"VMware.VimAutomation.ViCore.Impl.V1.DatastoreManagement.VmfsDatastoreImpl" { Datastore-Load($objVI) }
 					default { Write-Error -Message ("Unknown type " + $objVI.gettype() + " for object " + $objVI.name) }
 				}
 			}
@@ -167,6 +183,7 @@ function Get-Load {
 				"VirtualMachine" { Get-VM | %{ VM-Load($_) } }
 				"HostSystem" { Get-VMHost | %{ VMHost-Load($_) } }
 				"ClustercomputeResource" { Get-Cluster | %{ Cluster-Load($_) } }
+				"Datastore" { Get-Datastore | %{ Datastore-Load($_) } }
 				default { Show-GetLoadUsage }
 			}
 		}
