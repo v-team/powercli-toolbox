@@ -8,7 +8,7 @@ Just clone this repository to get the toolbox and all scripts included (you can 
 
 You can do this thanks to:
 
-        git clone https://github.com/v-team/powercli-toolbox.git
+    git clone https://github.com/v-team/powercli-toolbox.git
 
 # Contact us
 
