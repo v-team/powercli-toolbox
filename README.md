@@ -24,5 +24,6 @@ You can contact us for further information on our blogs:
 | Compare-AdvancedSettings.ps1 | Compare advanced settings with PowerCLI | http://www.vmdude.fr/en/scripts-en/compare-advanced-settings-with-powercli/ |
 | Get-HBAInfos.ps1 | HBA firmware version | http://www.vmdude.fr/en/scripts-en/hba-firmware-version/ |
 | Get-Load.ps1 | VM/Host/Cluster load | http://www.vmdude.fr/en/scripts-en/vmhostcluster-load-in-powercli/ |
+| Get-ResourceMap.ps1 | vCenter resources’ ASCII ART inventory | http://www.vmdude.fr/en/scripts-en/vcenter-resources-ascii-art-inventory/ |
 | Set-Tags.ps1 | Replicating custom fields | http://www.vmdude.fr/en/scripts-en/replicating-custom-fields/ |
 
