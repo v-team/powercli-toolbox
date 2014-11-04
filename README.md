@@ -14,8 +14,8 @@ You can do this thanks to:
 
 You can contact us for further information on our blogs:
 
-* (http://www.hypervisor.fr)
-* (http://www.vmdude.fr)
+* http://www.hypervisor.fr
+* http://www.vmdude.fr
 
 # Script List
 
