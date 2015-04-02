@@ -56,20 +56,29 @@ foreach ($esx in $hostsview | ?{$_.runtime.PowerState -match "poweredOn"} | Sort
 		$line.HbaWWN = ([regex]::matches("{0:x}" -f $hba.PortWorldWideName, '.{2}') | %{$_.value}) -join ':'
 		$line.HbaDriver = $hba.driver
 		$line.HbaModel = $hba.model
-		if ($hba.driver -match "lpfc") {
-			$remoteCommand = "head -9 /proc/scsi/lpfc*/* | grep -B1 " + $line.HbaWWN + " | grep -i 'firmware version' | sed 's/Firmware Version:\{0,1\} \(.*\)/\1/'"
-		} elseif ($hba.driver -match "qla") {
-			$remoteCommand = "head -8 /proc/scsi/qla*/* | grep -B2 " + $hba.device + " | grep -i 'firmware version' | head -1 | sed 's/.*Firmware version \(.*\), Driver version.*/\1/'"
+		if ($esx.Config.Product.Version -ge "5.5") {
+			$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -B2 " + $hba.device + "| grep -i 'firmware version' | sed 's/Firmware Version:\{0,1\} \(.*\)/\1/'"
+			$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
+			$line.HbaFirmwareVersion = Invoke-Expression $tmpStr
+			$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -B2 " + $hba.device + "| grep -i 'firmware version' | sed 's/.*Firmware version .*, Driver version \(.*\)/\1/'"
+			$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
+			$line.HbaDriverVersion = Invoke-Expression $tmpStr
+		} else {
+			if ($hba.driver -match "lpfc") {
+				$remoteCommand = "head -9 /proc/scsi/lpfc*/* | grep -B1 " + $line.HbaWWN + " | grep -i 'firmware version' | sed 's/Firmware Version:\{0,1\} \(.*\)/\1/'"
+			} elseif ($hba.driver -match "qla") {
+				$remoteCommand = "head -8 /proc/scsi/qla*/* | grep -B2 " + $hba.device + " | grep -i 'firmware version' | head -1 | sed 's/.*Firmware version \(.*\), Driver version.*/\1/'"
+			}
+			$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
+			$line.HbaFirmwareVersion = Invoke-Expression $tmpStr
+			if ($hba.driver -match "lpfc") {
+				$remoteCommand = "head -4 /proc/scsi/lpfc*/* | grep -B4 " + $hba.device + " | grep -i 'emulex lightpulse FC SCSI' | sed 's/Emulex LightPulse FC SCSI \(.*\)/\1/'"
+			} elseif ($hba.driver -match "qla") {
+				$remoteCommand = "head -8 /proc/scsi/qla*/* | grep -B2 " + $hba.device + " | grep -i 'firmware version' | sed 's/.*Firmware version .*, Driver version \(.*\)/\1/'"
+			}
+			$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
+			$line.HbaDriverVersion = Invoke-Expression $tmpStr
 		}
-		$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
-		$line.HbaFirmwareVersion = Invoke-Expression $tmpStr
-		if ($hba.driver -match "lpfc") {
-			$remoteCommand = "head -4 /proc/scsi/lpfc*/* | grep -B4 " + $hba.device + " | grep -i 'emulex lightpulse FC SCSI' | sed 's/Emulex LightPulse FC SCSI \(.*\)/\1/'"
-		} elseif ($hba.driver -match "qla") {
-			$remoteCommand = "head -8 /proc/scsi/qla*/* | grep -B2 " + $hba.device + " | grep -i 'firmware version' | sed 's/.*Firmware version .*, Driver version \(.*\)/\1/'"
-		}
-		$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
-		$line.HbaDriverVersion = Invoke-Expression $tmpStr
 		$line.HWModel = $esx.hardware.systemInfo.model
 		$report += $line
 	}
