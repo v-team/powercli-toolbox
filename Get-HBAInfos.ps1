@@ -84,15 +84,15 @@ foreach ($esx in $hostsview | ?{$_.runtime.PowerState -match "poweredOn"} | Sort
 		# Managing ESXi 5.5 native drivers
 		if ($esx.Config.Product.Version -ge "5.5") {
 			if ($hba.driver -match "lpfc") {
-				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -A9 " + $hba.device + "| grep -i 'FW Version' | sed 's/FW Version:\s*\(.*\)/\1/'"
-			} elseif ($hba.driver -match "qla") {
+				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -A9 " + $hba.device + "| grep -i 'FW Version' | sed 's/FW Version:.* \(.*\)/\1/'"
+			} elseif ($hba.driver -match "qla|qlnativefc") {
 				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -B2 " + $hba.device + "| grep -i 'firmware version' | sed 's/.*Firmware version \(.*\), Driver version.*/\1/'"
 			}
 			$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
 			$line.HbaFirmwareVersion = Invoke-Expression $tmpStr
 			if ($hba.driver -match "lpfc") {
 				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -A9 " + $hba.device + "| grep -i 'emulex lightpulse FC SCSI' | sed 's/Emulex LightPulse FC SCSI \(.*\)/\1/'"
-			} elseif ($hba.driver -match "qla") {
+			} elseif ($hba.driver -match "qla|qlnativefc") {
 				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -B2 " + $hba.device + "| grep -i 'firmware version' | sed 's/.*Firmware version .*, Driver version \(.*\)/\1/'"
 			}
 			$tmpStr = [string]::Format('& "{0}" {1} "{2}"', $PlinkPath, "-ssh " + $Username + "@" + $esx.Name + " -pw $Password" , $remoteCommand + ";exit")
