@@ -1,13 +1,13 @@
-param( [array]$SrcDatastores, [array]$DstDatastores = $SrcDatastores, [string]$vDiskFormat = "as-source", [int]$FreeSpaceDeviation="10", [int]$Force="0", [int]$DatastoreFreeLimit="10", [int]$mailcheck = "0", [string]$clustername, [int]$bypass = "0", [int]$vi5 = "0", [int]$drainreport = "0", [int]$StoragePod = "0")
+param( [array]$SrcDatastores, [array]$DstDatastores = $SrcDatastores, [string]$vDiskFormat = "as-source", [int]$FreeSpaceDeviation="10", [int]$Force="0", [int]$DatastoreFreeLimit="10", [int]$mailcheck = "0", [string]$clustername, [int]$bypass = "0", [int]$vi5 = "0", [int]$drainreport = "0", [int]$StoragePod = "0", [string]$exclude = "a1b2c3d4e5f6g7h8i9")
 
-#version 3.8
+#version 3.9
 
 $error.clear()
 $FailedVM = "vm-0"
 
-$SMTPSRV = ""
-$EmailFrom = ""
-$EmailTo = ""
+$SMTPSRV = "127.0.0.1"
+$EmailFrom = "relocate@vmware.local"
+$EmailTo = "admin@vmware.local"
 
 
 $css = '<style type="text/css">
@@ -26,6 +26,7 @@ function Send-SMTPmail($to, $from, $subject, $smtpserver, $body) {
 
 function DatastoreFreeSpaceDeviation ($DatastoreList) {
 	$DatastoreListView = $DatastoreList|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"}}
+	$DatastoreListView|%{$_.RefreshDatastore()}
 	$DatastoreBigFreePct = (($DatastoreListView|sort {$_.summary.FreeSpace} -Descending|select -First 1).summary.FreeSpace/($DatastoreListView|sort {$_.summary.FreeSpace} -Descending|select -First 1).summary.Capacity)
 	$DatastoreSlimFreePct = (($DatastoreListView|sort {$_.summary.FreeSpace}|select -First 1).summary.FreeSpace/($DatastoreListView|sort {$_.summary.FreeSpace}|select -First 1).summary.Capacity)
 	Return ($DatastoreBigFreePct-$DatastoreSlimFreePct)
@@ -40,11 +41,11 @@ function equalize-datastore ($Datastores, $vDiskFormat, $FreeSpaceDeviation, $Da
 		$DatastoresSlimFree = $DatastoreListView|sort {$_.summary.FreeSpace}|select -First 1
 
 		if ($Bypass -eq 0 -and $vi5 -eq 0)
-			{$VMToMove = $DatastoresSlimFree|%{$_.vm}|%{get-view $_}|?{$_.Runtime.ConnectionState -eq "connected"}|?{-not $_.Config.Template}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{!$_.Snapshot}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}
+			{$VMToMove = $DatastoresSlimFree|%{$_.vm}|%{get-view $_}|?{$_.name -notmatch $exclude}|?{$_.Runtime.ConnectionState -eq "connected"}|?{-not $_.Config.Template}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{!$_.Snapshot}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}
 		elseif ($Bypass -eq 0 -and $vi5 -eq 1)
-			{$VMToMove = $DatastoresSlimFree|%{$_.vm}|%{get-view $_}|?{$_.Runtime.ConnectionState -eq "connected"}|?{-not $_.Config.Template}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}			
+			{$VMToMove = $DatastoresSlimFree|%{$_.vm}|%{get-view $_}|?{$_.name -notmatch $exclude}|?{$_.Runtime.ConnectionState -eq "connected"}|?{-not $_.Config.Template}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}			
 		else
-			{$VMToMove = $DatastoresSlimFree|%{$_.vm}|%{get-view $_}|?{$_.Runtime.ConnectionState -eq "connected"}|?{-not $_.Config.Template}}
+			{$VMToMove = $DatastoresSlimFree|%{$_.vm}|%{get-view $_}|?{$_.name -notmatch $exclude}|?{$_.Runtime.ConnectionState -eq "connected"}|?{-not $_.Config.Template}}
 		if (!$VMToMove){Write-Host -ForegroundColor Red "no vm to move or incompatible";break}
 		
 		if ($vDiskFormat -eq "as-source" -or $vDiskFormat -eq "thin")
@@ -88,11 +89,11 @@ function equalize-datastore ($Datastores, $vDiskFormat, $FreeSpaceDeviation, $Da
 
 }
 
-function drain-datastore ($SrcDatastores, $DstDatastores, $vDiskFormat, $DatastoreFreeLimit) {
+function drain-datastore ($SrcDatastores, $DstDatastores, $vDiskFormat, $DatastoreFreeLimit, $excluded) {
 
 	$drainedvms = @()
 
-	while ((($SrcDatastores|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"}})|%{$_.vm|?{$_.value -notmatch $FailedVM}}|Measure-Object).count -gt 0)
+	while ((($SrcDatastores|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"}})|%{$_.vm|?{$_.value -notmatch $FailedVM}}|Measure-Object).count -gt $excluded)
 		{
 		
 		$DstDatastoreListView = $DstDatastores|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"}}
@@ -102,11 +103,11 @@ function drain-datastore ($SrcDatastores, $DstDatastores, $vDiskFormat, $Datasto
 		$SrcDatastoresSlimFree = $SrcDatastoreListView|sort {$_.summary.FreeSpace}
 		
 		if ($Bypass -eq 0 -and $vi5 -eq 0)
-			{$VMToMove = $SrcDatastoresSlimFree|%{$_.vm|?{$_.value -notmatch $FailedVM}}|%{get-view $_}|?{-not $_.Config.Template}|?{$_.Runtime.ConnectionState -eq "connected"}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{!$_.Snapshot}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}
+			{$VMToMove = $SrcDatastoresSlimFree|%{$_.vm|?{$_.value -notmatch $FailedVM}}|%{get-view $_}|?{$_.name -notmatch $exclude}|?{-not $_.Config.Template}|?{$_.Runtime.ConnectionState -eq "connected"}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{!$_.Snapshot}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}
 		elseif ($Bypass -eq 0 -and $vi5 -eq 1)
-			{$VMToMove = $SrcDatastoresSlimFree|%{$_.vm|?{$_.value -notmatch $FailedVM}}|%{get-view $_}|?{-not $_.Config.Template}|?{$_.Runtime.ConnectionState -eq "connected"}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}			
+			{$VMToMove = $SrcDatastoresSlimFree|%{$_.vm|?{$_.value -notmatch $FailedVM}}|%{get-view $_}|?{$_.name -notmatch $exclude}|?{-not $_.Config.Template}|?{$_.Runtime.ConnectionState -eq "connected"}|?{!($_.DisabledMethod|?{$_ -eq "RelocateVM_Task"})}|?{($_.LayoutEx.file|?{$_.type -notmatch "swap"}|%{$_.name.split()[0]}|sort -Unique|Measure-Object).count -eq 1}|?{($_|%{$_.Config.Hardware.Device}|?{$_.GetType().Name -eq "VirtualDisk"}|%{$_.Backing.CompatibilityMode}|Measure-Object).count -eq 0}|?{($_|%{$_.Config.Hardware.Device}|?{$_ -is [VMware.Vim.VirtualSCSIController]}|?{$_.SharedBus -ne "noSharing"}|Measure-Object).count -eq 0}}			
 		else
-			{$VMToMove = $SrcDatastoresSlimFree|%{$_.vm|?{$_.value -notmatch $FailedVM}}|?{-not $_.Config.Template}|%{get-view $_}|?{$_.Runtime.ConnectionState -eq "connected"}}
+			{$VMToMove = $SrcDatastoresSlimFree|%{$_.vm|?{$_.value -notmatch $FailedVM}}|%{get-view $_}|?{$_.name -notmatch $exclude}|?{-not $_.Config.Template}|?{$_.Runtime.ConnectionState -eq "connected"}}
 		if (!$VMToMove){Write-Host -ForegroundColor Red "no vm to move or incompatible";break}
 		
 		if ($vDiskFormat -eq "as-source" -or $vDiskFormat -eq "thin")
@@ -256,7 +257,10 @@ if ($mailcheck -eq 0)
 	elseif ((compare-object $SrcDatastores $DstDatastores|Measure-Object).count -gt 0)
 		{
 		$DrainSrcDatastores = compare-object $SrcDatastores $DstDatastores|?{$_.SideIndicator -eq "<="}|%{$_.InputObject}
-		$drain_task = drain-datastore $DrainSrcDatastores $DstDatastores $vDiskFormat $DatastoreFreeLimit
+		
+		$excluded = ($SrcDatastores|sort -Unique|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"} -Property VM}|%{$_.VM}|%{Get-View $_ -property Name}|?{$_.name -match $exclude}|select name  -Unique|measure-object).count
+		
+		$drain_task = drain-datastore $DrainSrcDatastores $DstDatastores $vDiskFormat $DatastoreFreeLimit $excluded 
 		if (!$drain_task -and $Force -eq "0" -and $bypass -eq "0")
 			{Write-Host "";Write-Host -ForegroundColor Red "Drain Failed"}
 		else
@@ -286,10 +290,11 @@ if ($mailcheck -eq 0)
 	}
 elseif ($mailcheck -eq 1)
 	{
+	$SrcDatastores+$DstDatastores|sort -Unique|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"}}|%{$_.RefreshDatastore()}
 	if (($DatastoresDeviation = DatastoreFreeSpaceDeviation $DstDatastores) -gt ($FreeSpaceDeviation/100))
 	   {
 	   $DatastoresDeviationPct = [math]::round($DatastoresDeviation * 100,1)
-	   $DatastoreMonitor =    ($SrcDatastores+$DstDatastores|sort -Unique|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"}})|select name, @{n="Size GB";e={$_.summary.Capacity/1GB}}, @{n="Space";e={(bargraph ($_.summary.Capacity - $_.summary.FreeSpace) $_.summary.Capacity)}}
+	   $DatastoreMonitor = ($SrcDatastores+$DstDatastores|sort -Unique|%{get-view -ViewType "datastore" -Filter @{"Name" = "^$_$"}})|select name, @{n="Size GB";e={$_.summary.Capacity/1GB}}, @{n="Space";e={(bargraph ($_.summary.Capacity - $_.summary.FreeSpace) $_.summary.Capacity)}}
 	   if ($clustername)
 		   {Send-SMTPmail $EmailTo $EmailFrom "[VMware] $clustername Datastores Deviation Check ($DatastoresDeviationPct%)" $SMTPSRV $($DatastoreMonitor|ConvertTo-Html -head $css -Title "$clustername Datastores Equalizer Check")}
 	   elseif ($StoragePod)
