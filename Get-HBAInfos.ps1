@@ -84,7 +84,7 @@ foreach ($esx in $hostsview | ?{$_.runtime.PowerState -match "poweredOn"} | Sort
 		# Managing ESXi 5.5 native drivers
 		if ($esx.Config.Product.Version -ge "5.5") {
 			if ($hba.driver -match "lpfc") {
-				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -A9 " + $hba.device + "| grep -i 'FW Version' | sed 's/FW Version:.* \(.*\)/\1/'"
+				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -A13 " + $hba.device + "| grep -i 'FW Version' | sed 's/FW Version:.* \(.*\)/\1/'"
 			} elseif ($hba.driver -match "qla|qlnativefc") {
 				$remoteCommand = "/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a | grep -B2 " + $hba.device + "| grep -i 'firmware version' | sed 's/.*Firmware version \(.*\), Driver version.*/\1/'"
 			}
