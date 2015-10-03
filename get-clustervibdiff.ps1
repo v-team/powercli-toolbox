@@ -2,7 +2,7 @@ param ([string]$cluname, [switch]$fullviblist, [switch]$compactviblist, [string]
 
 if ($global:DefaultVIServer.ProductLine -ne "vpx"){Write-Host -ForegroundColor Red "You must be connected to a vCenter to run this script!";break}
 
-#version 1.1
+#version 1.2
 $csvdelimiter = ";"
 
 function get-vibdiff ()
