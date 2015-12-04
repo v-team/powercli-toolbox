@@ -28,7 +28,7 @@ function get-vibdiff ()
 				$vibdiff.vibname = [string]$vibrefname.name
 				foreach ($esxhost in $esxhosts)
 					{
-						$vibdiff | Add-Member –MemberType NoteProperty –Name "$($esxhost.config.network.dnsConfig.hostName.replace("-","_"))" -Value $(invoke-expression $("$" + $esxhost.config.network.dnsConfig.hostName.replace("-","_") + "_viblist")|?{$_.name -eq $vibdiff.vibname}).Version
+						$vibdiff | Add-Member -MemberType NoteProperty –Name "$($esxhost.config.network.dnsConfig.hostName.replace("-","_"))" -Value $(invoke-expression $("$" + $esxhost.config.network.dnsConfig.hostName.replace("-","_") + "_viblist")|?{$_.name -eq $vibdiff.vibname}).Version
 					}
 				$vibfulldifflist += $vibdiff
 			}
