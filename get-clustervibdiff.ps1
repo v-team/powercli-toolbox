@@ -65,11 +65,11 @@ function get-vibdiff ()
 								{
 									if ($(invoke-expression $("$" + $esxhost.config.network.dnsConfig.hostName.replace("-","_") + "_viblist")|?{$_.name -eq $vibdiff.vibname}).Version -ne $(invoke-expression $("$" + $vibrefesxhost + "_viblist")|?{$_.name -eq $vibdiff.vibname}).Version)
 										{
-										$vibdiff | Add-Member –MemberType NoteProperty –Name "$($esxhost.config.network.dnsConfig.hostName.replace("-","_"))" -Value $(invoke-expression $("$" + $esxhost.split(".")[0] + "_viblist")|?{$_.name -eq $vibdiff.vibname}).Version
+										$vibdiff | Add-Member -MemberType NoteProperty -Name "$($esxhost.config.network.dnsConfig.hostName.replace("-","_"))" -Value $(invoke-expression $("$" + $esxhost.split(".")[0] + "_viblist")|?{$_.name -eq $vibdiff.vibname}).Version
 										}
 									else
 										{
-										$vibdiff | Add-Member –MemberType NoteProperty –Name "$($esxhost.config.network.dnsConfig.hostName.replace("-","_"))" -Value "=="
+										$vibdiff | Add-Member -MemberType NoteProperty -Name "$($esxhost.config.network.dnsConfig.hostName.replace("-","_"))" -Value "=="
 										}
 								}
 							$vibcompactdifflist += $vibdiff
