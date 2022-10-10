@@ -94,7 +94,7 @@ if ($Report) {
     
     $ExportFileName = ".\LostFileHunterReport_" + $($global:DefaultVIServer.Name) + "_" + $((Get-Date).ToString("s").Replace(":","-")) + ".csv"
 
-    $LostFiles|Export-Csv -Path $ExportFileName
+    $LostFiles|Export-Csv -Path $ExportFileName -NoTypeInformation
 
     Write-Host -ForegroundColor Cyan "$((Get-Date).ToString("s")) [INFO] Report file: $ExportFileName"
     if (!$Skip) {
